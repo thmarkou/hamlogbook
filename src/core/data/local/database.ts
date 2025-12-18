@@ -2,25 +2,29 @@ import * as SQLite from 'expo-sqlite';
 
 let db: SQLite.SQLiteDatabase | null = null;
 
-export async function getDatabase(): Promise<SQLite.SQLiteDatabase> {
+export function getDatabase(): SQLite.SQLiteDatabase {
   if (db) {
     return db;
   }
 
-  db = await SQLite.openDatabaseAsync('hamlogbook.db');
+  // expo-sqlite SDK 51 uses synchronous openDatabase (WebSQL API)
+  db = SQLite.openDatabase('hamlogbook.db');
   
-  // Enable foreign keys
-  await db.execAsync('PRAGMA foreign_keys = ON;');
-  
-  // Create tables
-  await createTables(db);
+  // Initialize database on first access
+  db.transaction((tx) => {
+    // Enable foreign keys
+    tx.executeSql('PRAGMA foreign_keys = ON;');
+    
+    // Create tables
+    createTables(tx);
+  });
   
   return db;
 }
 
-async function createTables(database: SQLite.SQLiteDatabase): Promise<void> {
+function createTables(tx: SQLite.SQLTransaction): void {
   // QSOs table
-  await database.execAsync(`
+  tx.executeSql(`
     CREATE TABLE IF NOT EXISTS qsos (
       id TEXT PRIMARY KEY,
       timestamp TEXT NOT NULL,
@@ -53,7 +57,7 @@ async function createTables(database: SQLite.SQLiteDatabase): Promise<void> {
   `);
 
   // Operators table (cached lookup data)
-  await database.execAsync(`
+  tx.executeSql(`
     CREATE TABLE IF NOT EXISTS operators (
       id TEXT PRIMARY KEY,
       callsign TEXT UNIQUE NOT NULL,
@@ -67,7 +71,7 @@ async function createTables(database: SQLite.SQLiteDatabase): Promise<void> {
   `);
 
   // Stations table
-  await database.execAsync(`
+  tx.executeSql(`
     CREATE TABLE IF NOT EXISTS stations (
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
@@ -82,17 +86,19 @@ async function createTables(database: SQLite.SQLiteDatabase): Promise<void> {
   `);
 
   // Create indexes for performance
-  await database.execAsync(`
+  tx.executeSql(`
     CREATE INDEX IF NOT EXISTS idx_qsos_timestamp ON qsos(timestamp);
+  `);
+  tx.executeSql(`
     CREATE INDEX IF NOT EXISTS idx_qsos_callsign ON qsos(callsign);
+  `);
+  tx.executeSql(`
     CREATE INDEX IF NOT EXISTS idx_qsos_band_mode ON qsos(band, mode);
   `);
 }
 
-export async function closeDatabase(): Promise<void> {
+export function closeDatabase(): void {
   if (db) {
-    await db.closeAsync();
     db = null;
   }
 }
-
