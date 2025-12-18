@@ -1,6 +1,5 @@
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
-import { colors, typography, spacing } from '@/shared/theme';
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -64,75 +63,79 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: '#000000',
   },
   content: {
     flex: 1,
-    padding: spacing.lg,
+    padding: 24,
     justifyContent: 'center',
     alignItems: 'center',
   },
   title: {
-    ...typography.display,
-    color: colors.text,
-    marginBottom: spacing.sm,
+    fontSize: 32,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    marginBottom: 8,
   },
   subtitle: {
-    ...typography.body,
-    color: colors.textSecondary,
-    marginBottom: spacing.xl,
+    fontSize: 16,
+    color: '#B0B0B0',
+    marginBottom: 32,
   },
   primaryButton: {
-    backgroundColor: colors.primary,
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.md,
+    backgroundColor: '#3B82F6',
+    paddingHorizontal: 32,
+    paddingVertical: 16,
     borderRadius: 12,
     minWidth: 200,
     alignItems: 'center',
-    marginBottom: spacing.xxl,
+    marginBottom: 48,
   },
   primaryButtonText: {
-    ...typography.buttonLarge,
-    color: colors.text,
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#FFFFFF',
   },
   statsContainer: {
     flexDirection: 'row',
-    gap: spacing.md,
+    gap: 16,
     width: '100%',
   },
   statCard: {
     flex: 1,
-    backgroundColor: colors.surface,
-    padding: spacing.md,
+    backgroundColor: '#1E1E1E',
+    padding: 16,
     borderRadius: 12,
     alignItems: 'center',
   },
   statValue: {
-    ...typography.h2,
-    color: colors.primary,
-    marginBottom: spacing.xs,
+    fontSize: 24,
+    fontWeight: '600',
+    color: '#3B82F6',
+    marginBottom: 4,
   },
   statLabel: {
-    ...typography.caption,
-    color: colors.textSecondary,
+    fontSize: 12,
+    color: '#B0B0B0',
   },
   navContainer: {
     flexDirection: 'row',
-    gap: spacing.md,
-    marginTop: spacing.xl,
+    gap: 16,
+    marginTop: 32,
     width: '100%',
   },
   navButton: {
     flex: 1,
-    padding: spacing.md,
+    padding: 16,
     borderRadius: 8,
-    backgroundColor: colors.surface,
+    backgroundColor: '#1E1E1E',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: '#333333',
   },
   navButtonText: {
-    ...typography.button,
-    color: colors.text,
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
   },
 });
