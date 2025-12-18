@@ -2,29 +2,18 @@ import * as SQLite from 'expo-sqlite';
 
 let db: SQLite.SQLiteDatabase | null = null;
 
-export function getDatabase(): SQLite.SQLiteDatabase {
+export async function getDatabase(): Promise<SQLite.SQLiteDatabase> {
   if (db) {
     return db;
   }
 
-  // expo-sqlite SDK 51 uses synchronous openDatabase (WebSQL API)
-  db = SQLite.openDatabase('hamlogbook.db');
+  // expo-sqlite 14.0.6 uses openDatabaseAsync
+  db = await SQLite.openDatabaseAsync('hamlogbook.db');
   
   // Initialize database on first access
-  db.transaction((tx) => {
-    // Enable foreign keys
-    tx.executeSql('PRAGMA foreign_keys = ON;');
+  await db.execAsync(`
+    PRAGMA foreign_keys = ON;
     
-    // Create tables
-    createTables(tx);
-  });
-  
-  return db;
-}
-
-function createTables(tx: SQLite.SQLTransaction): void {
-  // QSOs table
-  tx.executeSql(`
     CREATE TABLE IF NOT EXISTS qsos (
       id TEXT PRIMARY KEY,
       timestamp TEXT NOT NULL,
@@ -54,10 +43,7 @@ function createTables(tx: SQLite.SQLTransaction): void {
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
     );
-  `);
-
-  // Operators table (cached lookup data)
-  tx.executeSql(`
+    
     CREATE TABLE IF NOT EXISTS operators (
       id TEXT PRIMARY KEY,
       callsign TEXT UNIQUE NOT NULL,
@@ -68,10 +54,7 @@ function createTables(tx: SQLite.SQLTransaction): void {
       email TEXT,
       cached_at TEXT
     );
-  `);
-
-  // Stations table
-  tx.executeSql(`
+    
     CREATE TABLE IF NOT EXISTS stations (
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
@@ -83,22 +66,18 @@ function createTables(tx: SQLite.SQLTransaction): void {
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
     );
-  `);
-
-  // Create indexes for performance
-  tx.executeSql(`
+    
     CREATE INDEX IF NOT EXISTS idx_qsos_timestamp ON qsos(timestamp);
-  `);
-  tx.executeSql(`
     CREATE INDEX IF NOT EXISTS idx_qsos_callsign ON qsos(callsign);
-  `);
-  tx.executeSql(`
     CREATE INDEX IF NOT EXISTS idx_qsos_band_mode ON qsos(band, mode);
   `);
+  
+  return db;
 }
 
-export function closeDatabase(): void {
+export async function closeDatabase(): Promise<void> {
   if (db) {
+    await db.closeAsync();
     db = null;
   }
 }
