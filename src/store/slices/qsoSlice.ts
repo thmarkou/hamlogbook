@@ -1,6 +1,5 @@
 import { create } from 'zustand';
-import { QSO, CreateQSOInput, createQSO } from '@core/domain/entities';
-import { nanoid } from 'nanoid/non-secure';
+import { QSO, CreateQSOInput } from '@core/domain/entities';
 
 interface QSOState {
   qsos: QSO[];
@@ -8,7 +7,7 @@ interface QSOState {
   error: string | null;
 
   // Actions
-  addQSO: (input: CreateQSOInput) => string;
+  addQSO: (qso: QSO) => void;
   updateQSO: (id: string, updates: Partial<QSO>) => void;
   deleteQSO: (id: string) => void;
   getQSO: (id: string) => QSO | undefined;
@@ -22,33 +21,11 @@ export const useQSStore = create<QSOState>((set, get) => ({
   isLoading: false,
   error: null,
 
-  addQSO: (input) => {
-    try {
-      // Check for duplicates
-      const duplicate = get().checkDuplicate(
-        input.callsign,
-        input.band,
-        input.mode,
-        input.timestamp || new Date()
-      );
-      if (duplicate) {
-        set({ error: 'Duplicate QSO detected' });
-        return duplicate.id;
-      }
-
-      const id = nanoid();
-      const qso = createQSO(input, id);
-      set((state) => ({
-        qsos: [...state.qsos, qso],
-        error: null,
-      }));
-      return id;
-    } catch (error) {
-      set({
-        error: error instanceof Error ? error.message : 'Failed to add QSO',
-      });
-      throw error;
-    }
+  addQSO: (qso) => {
+    set((state) => ({
+      qsos: [...state.qsos, qso],
+      error: null,
+    }));
   },
 
   updateQSO: (id, updates) => {
