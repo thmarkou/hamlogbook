@@ -29,7 +29,14 @@ export default function HomeScreen() {
         modes: modes.size,
       });
     } catch (error) {
+      // Silently fail - database might not be initialized yet
       console.error('Failed to load stats:', error);
+      // Set default stats
+      setStats({
+        totalQsos: 0,
+        bands: 0,
+        modes: 0,
+      });
     }
   };
 
