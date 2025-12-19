@@ -2,7 +2,6 @@ import { View, Text, StyleSheet, ScrollView, RefreshControl } from 'react-native
 import { colors, typography, spacing } from '@shared/theme';
 import { useEffect, useState } from 'react';
 import { SQLiteQSORepository } from '@/core/data/local';
-import { QSO } from '@core/domain/entities';
 
 export default function StatsScreen() {
   const [stats, setStats] = useState({

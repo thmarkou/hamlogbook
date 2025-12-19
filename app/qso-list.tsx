@@ -1,5 +1,4 @@
-import { View, Text, FlatList, StyleSheet, TouchableOpacity } from 'react-native';
-import { useQSStore } from '@/store';
+import { View, Text, FlatList, StyleSheet } from 'react-native';
 import { useEffect, useState } from 'react';
 import { QSO } from '@core/domain/entities';
 import { SQLiteQSORepository } from '@/core/data/local';
@@ -7,7 +6,6 @@ import { colors, typography, spacing } from '@shared/theme';
 import { format } from 'date-fns';
 
 export default function QSOListScreen() {
-  const { qsos } = useQSStore();
   const [localQsos, setLocalQsos] = useState<QSO[]>([]);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const repository = new SQLiteQSORepository();
