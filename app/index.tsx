@@ -1,9 +1,10 @@
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { colors, typography, spacing } from '@shared/theme';
 import { useEffect, useState, useCallback } from 'react';
 import { SQLiteQSORepository } from '@/core/data/local';
 import { seedMockData } from '@/core/data/local/seedMockData';
+import { Alert } from 'react-native';
 
 export default function Index() {
   const router = useRouter();
@@ -12,19 +13,30 @@ export default function Index() {
     uniqueCallsigns: 0,
   });
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const loadStats = useCallback(async () => {
     try {
-      console.log('Loading stats...');
+      console.log('=== Loading stats ===');
+      setError(null);
+      setIsLoading(true);
+      
       const repository = new SQLiteQSORepository();
+      console.log('Repository created');
+      
       const count = await repository.count();
       console.log(`Current QSO count: ${count}`);
       
       if (count === 0) {
         console.log('Database is empty, seeding mock data...');
-        // Seed mock data if database is empty
-        await seedMockData(15);
-        console.log('Mock data seeded');
+        try {
+          await seedMockData(15);
+          console.log('Mock data seeded successfully');
+        } catch (seedError) {
+          console.error('Error seeding mock data:', seedError);
+          setError(`Failed to seed data: ${seedError instanceof Error ? seedError.message : 'Unknown error'}`);
+          Alert.alert('Error', `Failed to seed mock data: ${seedError instanceof Error ? seedError.message : 'Unknown error'}`);
+        }
       }
 
       const allQsos = await repository.findAll();
@@ -41,8 +53,11 @@ export default function Index() {
       console.log(`Stats updated: ${allQsos.length} QSOs, ${uniqueCallsigns} unique callsigns`);
     } catch (error) {
       console.error('Failed to load stats:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      setError(errorMessage);
+      console.error('Error details:', error);
       if (error instanceof Error) {
-        console.error('Error details:', error.message, error.stack);
+        console.error('Stack:', error.stack);
       }
     } finally {
       setIsLoading(false);
@@ -67,7 +82,19 @@ export default function Index() {
         <Text style={styles.subtitle}>Smart Amateur Radio Logbook</Text>
       </View>
 
-      {!isLoading && (
+      {isLoading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={styles.loadingText}>Loading...</Text>
+        </View>
+      ) : error ? (
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>Error: {error}</Text>
+          <TouchableOpacity style={styles.retryButton} onPress={loadStats}>
+            <Text style={styles.retryButtonText}>Retry</Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
         <View style={styles.statsContainer}>
           <View style={styles.statCard}>
             <Text style={styles.statValue}>{stats.totalQsos}</Text>
@@ -101,6 +128,25 @@ export default function Index() {
         >
           <Text style={styles.buttonText}>Statistics</Text>
         </TouchableOpacity>
+
+        {/* Debug: Force seed mock data */}
+        {__DEV__ && (
+          <TouchableOpacity
+            style={[styles.button, { backgroundColor: colors.warning }]}
+            onPress={async () => {
+              try {
+                console.log('Manual seed triggered');
+                await seedMockData(15);
+                Alert.alert('Success', 'Mock data seeded! Reloading stats...');
+                await loadStats();
+              } catch (error) {
+                Alert.alert('Error', error instanceof Error ? error.message : 'Failed to seed');
+              }
+            }}
+          >
+            <Text style={styles.buttonText}>🔧 Debug: Seed Mock Data</Text>
+          </TouchableOpacity>
+        )}
       </View>
     </ScrollView>
   );
@@ -125,6 +171,38 @@ const styles = StyleSheet.create({
   subtitle: {
     ...typography.body,
     color: colors.textSecondary,
+  },
+  loadingContainer: {
+    padding: spacing.xl,
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  loadingText: {
+    ...typography.body,
+    color: colors.textSecondary,
+  },
+  errorContainer: {
+    padding: spacing.lg,
+    backgroundColor: colors.surface,
+    borderRadius: 12,
+    margin: spacing.lg,
+    borderWidth: 1,
+    borderColor: colors.error,
+  },
+  errorText: {
+    ...typography.body,
+    color: colors.error,
+    marginBottom: spacing.md,
+  },
+  retryButton: {
+    backgroundColor: colors.primary,
+    padding: spacing.md,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  retryButtonText: {
+    ...typography.button,
+    color: colors.text,
   },
   statsContainer: {
     flexDirection: 'row',
