@@ -49,19 +49,22 @@ const GRID_SQUARES = [
 ];
 
 export async function seedMockData(count: number = 10): Promise<void> {
-  const repository = new SQLiteQSORepository();
-  
-  // Check if we already have data
-  const existing = await repository.count();
-  if (existing > 0) {
-    console.log(`Database already has ${existing} QSOs. Skipping seed.`);
-    return;
-  }
+  try {
+    console.log(`Starting seedMockData with count: ${count}`);
+    const repository = new SQLiteQSORepository();
+    
+    // Check if we already have data
+    const existing = await repository.count();
+    if (existing > 0) {
+      console.log(`Database already has ${existing} QSOs. Skipping seed.`);
+      return;
+    }
 
-  const now = new Date();
-  const qsos = [];
+    console.log('Database is empty, creating mock QSOs...');
+    const now = new Date();
+    const qsos = [];
 
-  for (let i = 0; i < count; i++) {
+    for (let i = 0; i < count; i++) {
     // Random timestamp within last 30 days
     const daysAgo = Math.floor(Math.random() * 30);
     const hoursAgo = Math.floor(Math.random() * 24);
@@ -126,11 +129,30 @@ export async function seedMockData(count: number = 10): Promise<void> {
     qsos.push(qso);
   }
 
-  // Save all QSOs
-  for (const qso of qsos) {
-    await repository.save(qso);
-  }
+    // Save all QSOs
+    console.log(`Saving ${qsos.length} QSOs to database...`);
+    for (let i = 0; i < qsos.length; i++) {
+      const qso = qsos[i];
+      try {
+        await repository.save(qso);
+        if ((i + 1) % 5 === 0) {
+          console.log(`Saved ${i + 1}/${qsos.length} QSOs...`);
+        }
+      } catch (error) {
+        console.error(`Failed to save QSO ${i + 1}:`, error);
+        throw error;
+      }
+    }
 
-  console.log(`Seeded ${count} mock QSOs`);
+    // Verify
+    const finalCount = await repository.count();
+    console.log(`✅ Seeded ${count} mock QSOs. Database now has ${finalCount} QSOs.`);
+  } catch (error) {
+    console.error('Error in seedMockData:', error);
+    if (error instanceof Error) {
+      console.error('Error details:', error.message, error.stack);
+    }
+    throw error;
+  }
 }
 
