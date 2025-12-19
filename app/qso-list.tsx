@@ -9,6 +9,7 @@ import { format } from 'date-fns';
 export default function QSOListScreen() {
   const { qsos } = useQSStore();
   const [localQsos, setLocalQsos] = useState<QSO[]>([]);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const repository = new SQLiteQSORepository();
 
   useEffect(() => {
@@ -18,10 +19,19 @@ export default function QSOListScreen() {
   const loadQSOs = async () => {
     try {
       const allQsos = await repository.findAll();
+      // Sort by timestamp (newest first)
+      allQsos.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
       setLocalQsos(allQsos);
     } catch (error) {
       console.error('Failed to load QSOs:', error);
+    } finally {
+      setIsRefreshing(false);
     }
+  };
+
+  const handleRefresh = () => {
+    setIsRefreshing(true);
+    loadQSOs();
   };
 
   const renderQSO = ({ item }: { item: QSO }) => {
@@ -78,8 +88,8 @@ export default function QSOListScreen() {
           renderItem={renderQSO}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContent}
-          refreshing={false}
-          onRefresh={loadQSOs}
+          refreshing={isRefreshing}
+          onRefresh={handleRefresh}
         />
       )}
     </View>

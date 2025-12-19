@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, RefreshControl } from 'react-native';
 import { colors, typography, spacing } from '@shared/theme';
 import { useEffect, useState } from 'react';
 import { SQLiteQSORepository } from '@/core/data/local';
@@ -11,6 +11,7 @@ export default function StatsScreen() {
     modes: new Set<string>(),
     uniqueCallsigns: new Set<string>(),
   });
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const repository = new SQLiteQSORepository();
 
@@ -39,11 +40,23 @@ export default function StatsScreen() {
       });
     } catch (error) {
       console.error('Failed to load stats:', error);
+    } finally {
+      setIsRefreshing(false);
     }
   };
 
+  const handleRefresh = () => {
+    setIsRefreshing(true);
+    loadStats();
+  };
+
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView 
+      style={styles.container}
+      refreshControl={
+        <RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} />
+      }
+    >
       <View style={styles.content}>
         <Text style={styles.title}>Statistics</Text>
 
