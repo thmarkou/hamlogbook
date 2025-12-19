@@ -1,7 +1,7 @@
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { colors, typography, spacing } from '@shared/theme';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { SQLiteQSORepository } from '@/core/data/local';
 import { seedMockData } from '@/core/data/local/seedMockData';
 
@@ -13,21 +13,23 @@ export default function Index() {
   });
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    loadStats();
-  }, []);
-
-  const loadStats = async () => {
+  const loadStats = useCallback(async () => {
     try {
+      console.log('Loading stats...');
       const repository = new SQLiteQSORepository();
       const count = await repository.count();
+      console.log(`Current QSO count: ${count}`);
       
       if (count === 0) {
+        console.log('Database is empty, seeding mock data...');
         // Seed mock data if database is empty
         await seedMockData(15);
+        console.log('Mock data seeded');
       }
 
       const allQsos = await repository.findAll();
+      console.log(`Loaded ${allQsos.length} QSOs from database`);
+      
       const uniqueCallsigns = new Set(
         allQsos.map((qso) => qso.callsign.toString().toUpperCase())
       ).size;
@@ -36,12 +38,27 @@ export default function Index() {
         totalQsos: allQsos.length,
         uniqueCallsigns,
       });
+      console.log(`Stats updated: ${allQsos.length} QSOs, ${uniqueCallsigns} unique callsigns`);
     } catch (error) {
       console.error('Failed to load stats:', error);
+      if (error instanceof Error) {
+        console.error('Error details:', error.message, error.stack);
+      }
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    loadStats();
+  }, [loadStats]);
+
+  // Reload stats when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      loadStats();
+    }, [loadStats])
+  );
 
   return (
     <ScrollView style={styles.container}>
