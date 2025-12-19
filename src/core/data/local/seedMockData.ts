@@ -46,6 +46,11 @@ const GRID_SQUARES = [
   'IO91op',
   'VK37qr',
   'ZL12st',
+  'AA00aa',
+  'AB01ab',
+  'AC02cd',
+  'AD03ef',
+  'AE04gh',
 ];
 
 export async function seedMockData(count: number = 10): Promise<void> {
@@ -101,10 +106,15 @@ export async function seedMockData(count: number = 10): Promise<void> {
     };
     const frequency = frequencyMap[band] || undefined;
 
-    // Random grid square (50% chance)
-    const gridSquare = Math.random() > 0.5 
-      ? GRID_SQUARES[Math.floor(Math.random() * GRID_SQUARES.length)]
-      : undefined;
+    // Random grid square (50% chance) - validate before using
+    let gridSquare: string | undefined = undefined;
+    if (Math.random() > 0.5) {
+      const candidate = GRID_SQUARES[Math.floor(Math.random() * GRID_SQUARES.length)];
+      // Validate grid square format before using
+      if (candidate && /^[A-R]{2}[0-9]{2}[A-X]{2}$/i.test(candidate)) {
+        gridSquare = candidate;
+      }
+    }
 
     // Random notes (30% chance)
     const notes = Math.random() > 0.7
