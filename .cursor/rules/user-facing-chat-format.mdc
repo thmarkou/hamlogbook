@@ -1,0 +1,19 @@
+---
+description: >-
+  Keep assistant replies readable in Greek/UTF-8—no markdown heading junk or
+  mojibake-prone formatting in user-facing chat.
+alwaysApply: true
+---
+
+# User-facing chat format (HamLogbook)
+
+When writing **any** reply to the user in this project:
+
+1. **Do not** start lines with ATX markdown headings (`#`, `##`, `###`) for short status or section titles, especially when the same line or the next token is Greek. Use a **plain sentence** or a **bold label on its own line** only if needed.
+2. **Do not** use the Unicode replacement character (U+FFFD) or ambiguous byte sequences that render as diamond/question-mark boxes in clients.
+3. **Do not** use emoji or decorative symbols in brief status lines (e.g. task done / error). Plain text only.
+4. For **task completion**, use one short plain line, e.g. `Completed.` or `Ολοκληρώθηκε.` with no `###` prefix and no special symbols before Greek.
+5. Prefer simple bullet lists with `-` or `1.`; avoid odd Unicode bullets or section markers (e.g. `§`).
+6. Code citations and fenced code blocks are fine; keep **prose** to plain UTF-8 Greek or English without experimental characters.
+
+This rule exists because `###` plus Greek and some copy paths caused garbled symbols in chat; the user must not see that again.

@@ -1,5 +1,8 @@
 import { create } from 'zustand';
-import { QSO, CreateQSOInput } from '@core/domain/entities';
+import type { QSO } from '@core/domain/entities';
+import { SQLiteQSORepository } from '@/core/data/local';
+
+const qsoRepository = new SQLiteQSORepository();
 
 interface QSOState {
   qsos: QSO[];
@@ -7,6 +10,7 @@ interface QSOState {
   error: string | null;
 
   // Actions
+  loadQSosFromDatabase: () => Promise<void>;
   addQSO: (qso: QSO) => void;
   updateQSO: (id: string, updates: Partial<QSO>) => void;
   deleteQSO: (id: string) => void;
@@ -20,6 +24,20 @@ export const useQSStore = create<QSOState>((set, get) => ({
   qsos: [],
   isLoading: false,
   error: null,
+
+  loadQSosFromDatabase: async () => {
+    set({ isLoading: true, error: null });
+    try {
+      const all = await qsoRepository.findAll();
+      all.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+      set({ qsos: all, isLoading: false });
+      console.log('[HamLogbook] Zustand store updated from SQLite:', all.length, 'QSO(s)');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to load QSOs';
+      console.error('[HamLogbook] loadQSosFromDatabase failed:', err);
+      set({ error: message, isLoading: false });
+    }
+  },
 
   addQSO: (qso) => {
     set((state) => ({

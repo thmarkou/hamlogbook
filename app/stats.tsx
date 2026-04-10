@@ -1,180 +1,211 @@
-import { View, Text, StyleSheet, ScrollView, RefreshControl } from 'react-native';
-import { colors, typography, spacing } from '@shared/theme';
-import { useEffect, useState } from 'react';
-import { SQLiteQSORepository } from '@/core/data/local';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  RefreshControl,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect } from 'expo-router';
+import { useCallback, useMemo, useState } from 'react';
+import { useQSStore } from '@/store';
+import { typography, spacing } from '@shared/theme';
+
+/** Screen background (spec). */
+const SCREEN_BG = '#000000';
+/** Primary metric color (spec). */
+const ACCENT_BLUE = '#3B82F6';
+/** Stat / section card background — matches dashboard tiles. */
+const CARD_BG = '#1C1C1E';
+/** Tag chips inside breakdown sections. */
+const TAG_BG = '#2C2C2E';
+const TEXT_WHITE = '#FFFFFF';
+const TEXT_MUTED = '#B0B0B0';
+
+type QSOList = ReturnType<typeof useQSStore.getState>['qsos'];
+
+/**
+ * Build headline counts and unique band/mode/callsign sets from the Zustand QSO list.
+ */
+function buildStats(qsos: QSOList) {
+  const bandSet = new Set<string>();
+  const modeSet = new Set<string>();
+  const callsignSet = new Set<string>();
+
+  for (const qso of qsos) {
+    bandSet.add(qso.band);
+    modeSet.add(qso.mode);
+    callsignSet.add(qso.callsign.toString().toUpperCase());
+  }
+
+  return {
+    totalQsos: qsos.length,
+    uniqueCallsigns: callsignSet.size,
+    bands: bandSet,
+    modes: modeSet,
+  };
+}
 
 export default function StatsScreen() {
-  const [stats, setStats] = useState({
-    totalQsos: 0,
-    bands: new Set<string>(),
-    modes: new Set<string>(),
-    uniqueCallsigns: new Set<string>(),
-  });
-  const [isRefreshing, setIsRefreshing] = useState(false);
+  const qsos = useQSStore((s) => s.qsos);
+  const isLoading = useQSStore((s) => s.isLoading);
+  const loadQSosFromDatabase = useQSStore((s) => s.loadQSosFromDatabase);
 
-  const repository = new SQLiteQSORepository();
+  const { totalQsos, uniqueCallsigns, bands, modes } = useMemo(
+    () => buildStats(qsos),
+    [qsos]
+  );
 
-  useEffect(() => {
-    loadStats();
-  }, []);
+  const [refreshing, setRefreshing] = useState(false);
 
-  const loadStats = async () => {
+  // Keep Zustand in sync with SQLite when this screen is opened.
+  useFocusEffect(
+    useCallback(() => {
+      void loadQSosFromDatabase();
+    }, [loadQSosFromDatabase])
+  );
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
     try {
-      const allQsos = await repository.findAll();
-      const bands = new Set<string>();
-      const modes = new Set<string>();
-      const callsigns = new Set<string>();
-
-      allQsos.forEach((qso) => {
-        bands.add(qso.band);
-        modes.add(qso.mode);
-        callsigns.add(qso.callsign.toString());
-      });
-
-      setStats({
-        totalQsos: allQsos.length,
-        bands,
-        modes,
-        uniqueCallsigns: callsigns,
-      });
-    } catch (error) {
-      console.error('Failed to load stats:', error);
+      await loadQSosFromDatabase();
     } finally {
-      setIsRefreshing(false);
+      setRefreshing(false);
     }
-  };
+  }, [loadQSosFromDatabase]);
 
-  const handleRefresh = () => {
-    setIsRefreshing(true);
-    loadStats();
-  };
+  const sortedBands = useMemo(() => Array.from(bands).sort(), [bands]);
+  const sortedModes = useMemo(() => Array.from(modes).sort(), [modes]);
 
   return (
-    <ScrollView 
-      style={styles.container}
-      refreshControl={
-        <RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} />
-      }
-    >
-      <View style={styles.content}>
-        <Text style={styles.title}>Statistics</Text>
+    <SafeAreaView style={styles.safe} edges={['bottom', 'left', 'right']}>
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.scrollContent}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing || isLoading}
+            onRefresh={onRefresh}
+            tintColor={ACCENT_BLUE}
+          />
+        }
+      >
+        <Text style={styles.pageTitle}>Statistics</Text>
 
-        <View style={styles.statCard}>
-          <Text style={styles.statValue}>{stats.totalQsos}</Text>
-          <Text style={styles.statLabel}>Total QSOs</Text>
+        {/* Same two-up stat cards as the home dashboard */}
+        <View style={styles.statsRow}>
+          <View style={styles.headlineCard}>
+            <Text style={styles.headlineValue}>{totalQsos}</Text>
+            <Text style={styles.headlineLabel}>Total QSOs</Text>
+          </View>
+          <View style={styles.headlineCard}>
+            <Text style={styles.headlineValue}>{uniqueCallsigns}</Text>
+            <Text style={styles.headlineLabel}>Unique Callsigns</Text>
+          </View>
         </View>
 
-        <View style={styles.statCard}>
-          <Text style={styles.statValue}>{stats.uniqueCallsigns.size}</Text>
-          <Text style={styles.statLabel}>Unique Callsigns</Text>
-        </View>
-
-        <View style={styles.section}>
+        {/* Bands: count in blue, unique band names as dark gray tags */}
+        <View style={styles.sectionCard}>
           <Text style={styles.sectionTitle}>Bands Worked</Text>
-          <Text style={styles.sectionValue}>{stats.bands.size}</Text>
-          <View style={styles.bandList}>
-            {Array.from(stats.bands).sort().map((band) => (
-              <View key={band} style={styles.bandTag}>
-                <Text style={styles.bandTagText}>{band}</Text>
+          <Text style={styles.sectionCount}>{bands.size}</Text>
+          <View style={styles.tagWrap}>
+            {sortedBands.map((band) => (
+              <View key={band} style={styles.tag}>
+                <Text style={styles.tagText}>{band}</Text>
               </View>
             ))}
           </View>
         </View>
 
-        <View style={styles.section}>
+        {/* Modes: count in blue, unique mode names as dark gray tags */}
+        <View style={styles.sectionCard}>
           <Text style={styles.sectionTitle}>Modes Used</Text>
-          <Text style={styles.sectionValue}>{stats.modes.size}</Text>
-          <View style={styles.modeList}>
-            {Array.from(stats.modes).sort().map((mode) => (
-              <View key={mode} style={styles.modeTag}>
-                <Text style={styles.modeTagText}>{mode}</Text>
+          <Text style={styles.sectionCount}>{modes.size}</Text>
+          <View style={styles.tagWrap}>
+            {sortedModes.map((mode) => (
+              <View key={mode} style={styles.tag}>
+                <Text style={styles.tagText}>{mode}</Text>
               </View>
             ))}
           </View>
         </View>
-      </View>
-    </ScrollView>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  safe: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: SCREEN_BG,
   },
-  content: {
-    padding: spacing.lg,
+  scroll: {
+    flex: 1,
+    backgroundColor: SCREEN_BG,
   },
-  title: {
+  scrollContent: {
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.xl,
+  },
+  pageTitle: {
     ...typography.h1,
-    color: colors.text,
+    fontWeight: '700',
+    color: TEXT_WHITE,
+    marginBottom: spacing.lg,
+  },
+  statsRow: {
+    flexDirection: 'row',
+    gap: spacing.md,
     marginBottom: spacing.xl,
   },
-  statCard: {
-    backgroundColor: colors.surface,
-    padding: spacing.xl,
+  headlineCard: {
+    flex: 1,
+    backgroundColor: CARD_BG,
+    paddingVertical: spacing.lg,
+    paddingHorizontal: spacing.md,
     borderRadius: 12,
     alignItems: 'center',
-    marginBottom: spacing.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
   },
-  statValue: {
+  headlineValue: {
     ...typography.display,
-    color: colors.primary,
-    marginBottom: spacing.sm,
+    color: ACCENT_BLUE,
+    marginBottom: spacing.xs,
   },
-  statLabel: {
-    ...typography.body,
-    color: colors.textSecondary,
+  headlineLabel: {
+    ...typography.bodySmall,
+    color: TEXT_MUTED,
+    textAlign: 'center',
   },
-  section: {
-    backgroundColor: colors.surface,
-    padding: spacing.lg,
+  sectionCard: {
+    backgroundColor: CARD_BG,
     borderRadius: 12,
+    padding: spacing.lg,
     marginBottom: spacing.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
   },
   sectionTitle: {
     ...typography.h3,
-    color: colors.text,
+    color: TEXT_WHITE,
     marginBottom: spacing.sm,
   },
-  sectionValue: {
+  sectionCount: {
     ...typography.h2,
-    color: colors.primary,
+    color: ACCENT_BLUE,
     marginBottom: spacing.md,
   },
-  bandList: {
+  tagWrap: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: spacing.sm,
   },
-  bandTag: {
-    backgroundColor: colors.backgroundSecondary,
+  tag: {
+    backgroundColor: TAG_BG,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     borderRadius: 8,
   },
-  bandTagText: {
+  tagText: {
     ...typography.bodySmall,
-    color: colors.text,
-  },
-  modeList: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
-  },
-  modeTag: {
-    backgroundColor: colors.backgroundSecondary,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: 8,
-  },
-  modeTagText: {
-    ...typography.bodySmall,
-    color: colors.text,
+    color: TEXT_WHITE,
   },
 });
-

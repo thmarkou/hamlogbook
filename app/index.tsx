@@ -1,165 +1,93 @@
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useFocusEffect } from 'expo-router';
+import { useCallback } from 'react';
 import { colors, typography, spacing } from '@shared/theme';
-import { useEffect, useState, useCallback } from 'react';
-import { SQLiteQSORepository } from '@/core/data/local';
-import { seedMockData } from '@/core/data/local/seedMockData';
-import { Alert } from 'react-native';
+import { useDashboardStatsStore } from '@/store';
+
+const PURE_BLACK = '#000000';
 
 export default function Index() {
   const router = useRouter();
-  const [stats, setStats] = useState({
-    totalQsos: 0,
-    uniqueCallsigns: 0,
-  });
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const totalQsos = useDashboardStatsStore((s) => s.totalQsos);
+  const uniqueCallsigns = useDashboardStatsStore((s) => s.uniqueCallsigns);
+  const syncFromDatabase = useDashboardStatsStore((s) => s.syncFromDatabase);
 
-  const loadStats = useCallback(async () => {
-    try {
-      console.log('=== Loading stats ===');
-      setError(null);
-      setIsLoading(true);
-      
-      const repository = new SQLiteQSORepository();
-      console.log('Repository created');
-      
-      const count = await repository.count();
-      console.log(`Current QSO count: ${count}`);
-      
-      if (count === 0) {
-        console.log('Database is empty, seeding mock data...');
-        try {
-          await seedMockData(15);
-          console.log('Mock data seeded successfully');
-        } catch (seedError) {
-          console.error('Error seeding mock data:', seedError);
-          setError(`Failed to seed data: ${seedError instanceof Error ? seedError.message : 'Unknown error'}`);
-          Alert.alert('Error', `Failed to seed mock data: ${seedError instanceof Error ? seedError.message : 'Unknown error'}`);
-        }
-      }
-
-      const allQsos = await repository.findAll();
-      console.log(`Loaded ${allQsos.length} QSOs from database`);
-      
-      const uniqueCallsigns = new Set(
-        allQsos.map((qso) => qso.callsign.toString().toUpperCase())
-      ).size;
-
-      setStats({
-        totalQsos: allQsos.length,
-        uniqueCallsigns,
-      });
-      console.log(`Stats updated: ${allQsos.length} QSOs, ${uniqueCallsigns} unique callsigns`);
-    } catch (error) {
-      console.error('Failed to load stats:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      setError(errorMessage);
-      console.error('Error details:', error);
-      if (error instanceof Error) {
-        console.error('Stack:', error.stack);
-      }
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    loadStats();
-  }, [loadStats]);
-
-  // Reload stats when screen comes into focus
   useFocusEffect(
     useCallback(() => {
-      loadStats();
-    }, [loadStats])
+      void syncFromDatabase();
+    }, [syncFromDatabase])
   );
 
   return (
-    <ScrollView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>HamLogbook</Text>
-        <Text style={styles.subtitle}>Smart Amateur Radio Logbook</Text>
-      </View>
+    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+      >
+        <View style={styles.header}>
+          <Text style={styles.title}>HamLogbook</Text>
+          <Text style={styles.subtitle}>Smart Amateur Radio Logbook</Text>
+        </View>
 
-      {isLoading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.loadingText}>Loading...</Text>
-        </View>
-      ) : error ? (
-        <View style={styles.errorContainer}>
-          <Text style={styles.errorText}>Error: {error}</Text>
-          <TouchableOpacity style={styles.retryButton} onPress={loadStats}>
-            <Text style={styles.retryButtonText}>Retry</Text>
-          </TouchableOpacity>
-        </View>
-      ) : (
-        <View style={styles.statsContainer}>
+        <View style={styles.statsRow}>
           <View style={styles.statCard}>
-            <Text style={styles.statValue}>{stats.totalQsos}</Text>
+            <Text style={styles.statValue}>{totalQsos}</Text>
             <Text style={styles.statLabel}>Total QSOs</Text>
           </View>
           <View style={styles.statCard}>
-            <Text style={styles.statValue}>{stats.uniqueCallsigns}</Text>
+            <Text style={styles.statValue}>{uniqueCallsigns}</Text>
             <Text style={styles.statLabel}>Unique Callsigns</Text>
           </View>
         </View>
-      )}
 
-      <View style={styles.content}>
-        <TouchableOpacity
-          style={[styles.button, styles.primaryButton]}
-          onPress={() => router.push('/log-qso')}
-        >
-          <Text style={styles.primaryButtonText}>Log a QSO</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.button}
-          onPress={() => router.push('/qso-list')}
-        >
-          <Text style={styles.buttonText}>View QSO Log</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.button}
-          onPress={() => router.push('/stats')}
-        >
-          <Text style={styles.buttonText}>Statistics</Text>
-        </TouchableOpacity>
-
-        {/* Debug: Force seed mock data */}
-        {__DEV__ && (
+        <View style={styles.actions}>
           <TouchableOpacity
-            style={[styles.button, { backgroundColor: colors.warning }]}
-            onPress={async () => {
-              try {
-                console.log('Manual seed triggered');
-                await seedMockData(15);
-                Alert.alert('Success', 'Mock data seeded! Reloading stats...');
-                await loadStats();
-              } catch (error) {
-                Alert.alert('Error', error instanceof Error ? error.message : 'Failed to seed');
-              }
-            }}
+            style={[styles.button, styles.buttonPrimary]}
+            onPress={() => router.push('/log-qso')}
+            activeOpacity={0.85}
           >
-            <Text style={styles.buttonText}>🔧 Debug: Seed Mock Data</Text>
+            <Text style={styles.buttonPrimaryLabel}>Log a QSO</Text>
           </TouchableOpacity>
-        )}
-      </View>
-    </ScrollView>
+
+          <TouchableOpacity
+            style={[styles.button, styles.buttonSecondary]}
+            onPress={() => router.push('/qso-list')}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.buttonSecondaryLabel}>View QSO Log</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.button, styles.buttonSecondary]}
+            onPress={() => router.push('/stats')}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.buttonSecondaryLabel}>Statistics</Text>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  safeArea: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: PURE_BLACK,
+  },
+  scroll: {
+    flex: 1,
+    backgroundColor: PURE_BLACK,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    paddingBottom: spacing.xl,
   },
   header: {
-    paddingTop: spacing.xl * 2,
-    paddingBottom: spacing.xl,
+    paddingTop: spacing.xl,
+    paddingBottom: spacing.lg,
     paddingHorizontal: spacing.lg,
     alignItems: 'center',
   },
@@ -170,53 +98,22 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     ...typography.body,
-    color: colors.textSecondary,
-  },
-  loadingContainer: {
-    padding: spacing.xl,
-    alignItems: 'center',
-    gap: spacing.md,
-  },
-  loadingText: {
-    ...typography.body,
-    color: colors.textSecondary,
-  },
-  errorContainer: {
-    padding: spacing.lg,
-    backgroundColor: colors.surface,
-    borderRadius: 12,
-    margin: spacing.lg,
-    borderWidth: 1,
-    borderColor: colors.error,
-  },
-  errorText: {
-    ...typography.body,
-    color: colors.error,
-    marginBottom: spacing.md,
-  },
-  retryButton: {
-    backgroundColor: colors.primary,
-    padding: spacing.md,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  retryButtonText: {
-    ...typography.button,
     color: colors.text,
+    opacity: 0.85,
+    textAlign: 'center',
   },
-  statsContainer: {
+  statsRow: {
     flexDirection: 'row',
     paddingHorizontal: spacing.lg,
     gap: spacing.md,
-    marginBottom: spacing.lg,
+    marginBottom: spacing.xl,
   },
   statCard: {
     flex: 1,
-    backgroundColor: colors.surface,
-    padding: spacing.lg,
+    backgroundColor: colors.dashboardStatCard,
+    paddingVertical: spacing.lg,
+    paddingHorizontal: spacing.md,
     borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.border,
     alignItems: 'center',
   },
   statValue: {
@@ -227,31 +124,32 @@ const styles = StyleSheet.create({
   statLabel: {
     ...typography.bodySmall,
     color: colors.textSecondary,
+    textAlign: 'center',
   },
-  content: {
-    flex: 1,
-    padding: spacing.lg,
+  actions: {
+    paddingHorizontal: spacing.lg,
     gap: spacing.md,
   },
   button: {
-    backgroundColor: colors.surface,
-    padding: spacing.lg,
+    minHeight: 56,
+    paddingVertical: spacing.lg,
+    paddingHorizontal: spacing.lg,
     borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.border,
     alignItems: 'center',
+    justifyContent: 'center',
   },
-  primaryButton: {
+  buttonPrimary: {
     backgroundColor: colors.primary,
-    borderColor: colors.primary,
   },
-  buttonText: {
-    ...typography.h3,
+  buttonPrimaryLabel: {
+    ...typography.buttonLarge,
     color: colors.text,
   },
-  primaryButtonText: {
-    ...typography.h3,
+  buttonSecondary: {
+    backgroundColor: colors.dashboardSecondaryButton,
+  },
+  buttonSecondaryLabel: {
+    ...typography.buttonLarge,
     color: colors.text,
-    fontWeight: '700',
   },
 });

@@ -1,6 +1,6 @@
 import { Callsign } from '../value-objects/Callsign';
-import { Band, BandName } from '../value-objects/Band';
-import { Mode, ModeName } from '../value-objects/Mode';
+import type { BandName } from '../value-objects/Band';
+import type { ModeName } from '../value-objects/Mode';
 import { RST } from '../value-objects/RST';
 import { GridSquare } from '../value-objects/GridSquare';
 

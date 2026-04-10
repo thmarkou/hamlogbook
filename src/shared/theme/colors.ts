@@ -18,6 +18,11 @@ export const colors = {
   surfaceElevated: '#2A2A2A',
   surfaceHighlight: '#333333',
 
+  /** Dashboard stat tiles (darker gray than main chrome) */
+  dashboardStatCard: '#1C1C1E',
+  /** Filled secondary actions on dashboard */
+  dashboardSecondaryButton: '#2C2C2E',
+
   // Text colors
   text: '#FFFFFF',
   textSecondary: '#B0B0B0',
