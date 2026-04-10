@@ -36,6 +36,16 @@
 - Εξαρτήσεις: `expo-file-system`, `expo-sharing`, `react-native-svg`, `lucide-react-native`.
 - Οθόνη λίστας QSO: `app/qso-list/index.tsx` (διαγράφηκε το `qso-list.tsx`). Η διαδρομή `/qso-list` παραμένει.
 
+### iOS native — `ExpoSharing`
+
+- Σε dev client / `expo run:ios`, αν λείπει το pod, εμφανίζεται: `Cannot find native module 'ExpoSharing'` (Hermes).
+- Το `package.json` είχε `expo-sharing`, αλλά το `Podfile.lock` δεν περιελάμβανε `ExpoSharing` μέχρι `pod install` στο `ios/`.
+- Μετά την εγκατάσταση pods, απαιτείται **ξαναχτίσιμο** της εφαρμογής (όχι μόνο reload στο Metro).
+
+### Git repository
+
+- Remote αντιγράφου ανάπτυξης: `https://github.com/thmarkou/hamlogbook.git` (όνομα repo: `hamlogbook`).
+
 ---
 
-Τελευταία ενημέρωση: 10 Απριλίου 2026
+Τελευταία ενημέρωση: 10 Απριλίου 2026 (συμπληρώσεις iOS pods & repo)
